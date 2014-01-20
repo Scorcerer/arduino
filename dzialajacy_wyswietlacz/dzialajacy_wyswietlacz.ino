@@ -1,7 +1,7 @@
 
 #include <LiquidCrystal.h>
 
-LiquidCrystal lcd(3,4,5,6,7,8,9,10,11,12,13);
+LiquidCrystal lcd(4,5,6,7,8,9,10,11,12,13);
 const int wiersze = 4, kolumny = 16;
 int licznik = 0;
 
