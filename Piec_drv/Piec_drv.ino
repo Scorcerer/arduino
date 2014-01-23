@@ -229,7 +229,6 @@ ISR(TIMER1_COMPA_vect){
 
 ISR(TIMER2_COMPA_vect){
   if( t2 >= 200 ) {
-  //  if (TempTable[2]+5 <= TempTable[3]) relayChan[3]=true;  // Tutaj odpalamy mieszanie CWU
     if (relayChan[0] || relayChan[1]) relayChan[2]=true;
     else relayChan[2]=false;
     t2 = 0;
