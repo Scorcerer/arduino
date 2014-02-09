@@ -4,6 +4,7 @@
 #include <Time.h>
 #include <DS1307RTC.h>
 #include <avr/wdt.h>
+#include "avr/pgmspace.h"
 
 //Definicje, definicje:
 LiquidCrystal lcd(4,5,6,7,8,9,10,11,12,13); // PINy wyświetlacza LCD...
@@ -25,7 +26,7 @@ void Relay_on(byte _data ) {
   Wire.write(_data2 | 1<<_data);
   Wire.endTransmission();
   relaySet[_data]=true;
-  lcd.setCursor(12,_data);lcd.print("1");
+//  lcd.setCursor(12,_data);lcd.print("1");
   }
 }
 
@@ -40,7 +41,7 @@ void Relay_off(byte _data ) {
   Wire.write(_data2 & ~(1<<_data));
   Wire.endTransmission();
   relaySet[_data]=false;
-  lcd.setCursor(12,_data);lcd.print("0");
+//  lcd.setCursor(12,_data);lcd.print("0");
   }
 }
 
@@ -87,6 +88,7 @@ void updateTemp(volatile float wynikowa[]){
   getTemp(TempSol,wynikowa,3);
 }
 
+/*
 void printTemp()
 {
   lcd.setCursor(6,0);lcd.print(TempTable[0]);
@@ -94,15 +96,16 @@ void printTemp()
   lcd.setCursor(6,2);lcd.print(TempTable[2]);
   lcd.setCursor(6,3);lcd.print(TempTable[3]);
 }
-
-void prep()
+*/
+void LCDUpdate()
 {
-  lcd.setCursor(0,0);lcd.print("TempG ");
-  lcd.setCursor(0,1);lcd.print("TempD ");
-  lcd.setCursor(0,2);lcd.print("ZbCWU ");
-  lcd.setCursor(0,3);lcd.print("ZbSol ");
+  lcd.setCursor(0,0);lcd.print("TempG "); lcd.print(TempTable[0]); lcd.print(" "); lcd.print(relaySet[0]); lcd.print(" "); if (hour()<10) lcd.print("0"); lcd.print(hour());
+  lcd.setCursor(0,1);lcd.print("TempD "); lcd.print(TempTable[1]); lcd.print(" "); lcd.print(relaySet[1]); lcd.print(" "); if (minute()<10) lcd.print("0"); lcd.print(minute());
+  lcd.setCursor(0,2);lcd.print("ZbCWU "); lcd.print(TempTable[2]); lcd.print(" "); lcd.print(relaySet[2]); lcd.print(" "); if (second()<10) lcd.print("0"); lcd.print(second());
+  lcd.setCursor(0,3);lcd.print("ZbSol "); lcd.print(TempTable[3]); lcd.print(" "); lcd.print(relaySet[3]); lcd.print("  "); lcd.print(weekday());
 }
 
+/*
 void printTime()
 {
   if (timeStatus() == timeSet){
@@ -117,13 +120,14 @@ void printTime()
    }
   
 }
-
+*/
 void checkTemp( byte level, float temp) {
   if ( TempTable[level] <= temp-0.2 ) relayChan[level]=true;
   else { if (TempTable[level] >= temp+0.2) relayChan[level]=false;}
 }
 
 //############    TABLICE CZASU
+//prog_uchar grzanie_pietro[2][24][4]={
 const bool grzanie_pietro[2][24][4]={
   { // workdays
     {0,0,0,0}, // 00
@@ -248,7 +252,8 @@ void setup(void)
   lcd.clear();
   lcd.setCursor(5,0); lcd.print("Witaj!");
   delay(1000);
-  prep();
+  LCDUpdate();
+//  prep();
 
  //ustawienie Timera1 (16bit):
  cli();
@@ -278,8 +283,9 @@ void loop(void)
 {
   wdt_reset();
   updateTemp(TempTable);
-  printTime();
-  printTemp();
+  LCDUpdate();
+//  printTime();
+//  printTemp();
 
     // Ustawiamy grzanie na pietrze:
   if ( 1 < weekday() < 7){
