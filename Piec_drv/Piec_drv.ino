@@ -26,7 +26,6 @@ void Relay_on(byte _data ) {
   Wire.write(_data2 | 1<<_data);
   Wire.endTransmission();
   relaySet[_data]=true;
-//  lcd.setCursor(12,_data);lcd.print("1");
   }
 }
 
@@ -41,7 +40,6 @@ void Relay_off(byte _data ) {
   Wire.write(_data2 & ~(1<<_data));
   Wire.endTransmission();
   relaySet[_data]=false;
-//  lcd.setCursor(12,_data);lcd.print("0");
   }
 }
 
@@ -57,7 +55,6 @@ void setRelay(){
 
 //############## TEMPERATURA
 OneWire ds(2); // 1-Wire na pinie 2
-//OneWire gora(3); //1-wire na pinie 3
 
 byte TempG[8] = { 0x28, 0x38, 0xD0, 0x76, 0x04, 0x00, 0x00, 0x33 }; // Adres Sensora nr1
 byte TempD[8] = { 0x28, 0x5D, 0x15, 0xD8, 0x02, 0x00, 0x00, 0x86 }; // Adres Sensora nr2
@@ -88,15 +85,6 @@ void updateTemp(volatile float wynikowa[]){
   getTemp(TempSol,wynikowa,3);
 }
 
-/*
-void printTemp()
-{
-  lcd.setCursor(6,0);lcd.print(TempTable[0]);
-  lcd.setCursor(6,1);lcd.print(TempTable[1]);
-  lcd.setCursor(6,2);lcd.print(TempTable[2]);
-  lcd.setCursor(6,3);lcd.print(TempTable[3]);
-}
-*/
 void LCDUpdate()
 {
   lcd.setCursor(0,0);lcd.print("TempG "); lcd.print(TempTable[0]); lcd.print(" "); lcd.print(relaySet[0]); lcd.print(" "); if (hour()<10) lcd.print("0"); lcd.print(hour());
@@ -105,22 +93,6 @@ void LCDUpdate()
   lcd.setCursor(0,3);lcd.print("ZbSol "); lcd.print(TempTable[3]); lcd.print(" "); lcd.print(relaySet[3]); lcd.print("  "); lcd.print(weekday());
 }
 
-/*
-void printTime()
-{
-  if (timeStatus() == timeSet){
-    lcd.setCursor(14,0); if (hour()<10) lcd.print("0"); lcd.print(hour());
-    lcd.setCursor(14,1); if (minute()<10) lcd.print("0"); lcd.print(minute());
-    lcd.setCursor(14,2); if (second()<10) lcd.print("0"); lcd.print(second());
-    lcd.setCursor(15,3); lcd.print(weekday());
-   } else {
-    lcd.setCursor(14,0);lcd.print("Na");
-    lcd.setCursor(14,1);lcd.print("Na");
-    lcd.setCursor(14,2);lcd.print("Na");
-   }
-  
-}
-*/
 void checkTemp( byte level, float temp) {
   if ( TempTable[level] <= temp-0.2 ) relayChan[level]=true;
   else { if (TempTable[level] >= temp+0.2) relayChan[level]=false;}
@@ -284,8 +256,6 @@ void loop(void)
   wdt_reset();
   updateTemp(TempTable);
   LCDUpdate();
-//  printTime();
-//  printTemp();
 
     // Ustawiamy grzanie na pietrze:
   if ( 1 < weekday() < 7){
