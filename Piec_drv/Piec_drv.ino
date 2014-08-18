@@ -49,12 +49,12 @@ void setRelay(){
         if(relayChan[i]) Relay_on(i); else Relay_off(i);
       };
     };
-    for(byte i=0; i<4 ; i++) {lcd.setCursor(12,i);lcd.print(int(relaySet[i]));}
+//    for(byte i=0; i<4 ; i++) {lcd.setCursor(12,i);lcd.print(int(relaySet[i]));}
 }
 
 //############## TEMPERATURA
-OneWire ds(2); // 1-Wire na pinie 2
-//OneWire ds(3); // Oddzielne 1-Wire na pinie 3
+OneWire ds2(2); // 1-Wire na pinie 2
+OneWire ds3(3); // Oddzielne 1-Wire na pinie 3
 
 byte TempG[8] = { 0x28, 0x38, 0xD0, 0x76, 0x04, 0x00, 0x00, 0x33 }; // Adres Sensora nr1
 byte TempD[8] = { 0x28, 0x5D, 0x15, 0xD8, 0x02, 0x00, 0x00, 0x86 }; // Adres Sensora nr2
@@ -62,7 +62,7 @@ byte TempCWU[8] = { 0x28, 0x33, 0x8d, 0x45, 0x04, 0x00, 0x00, 0x72 }; // Adres S
 byte TempSol[8] = { 0x28, 0xB4, 0xED, 0x53, 0x04, 0x00, 0x00, 0x3D }; // Adres sensora nr4
 volatile float TempTable[4];
 
-void getTemp(byte addr[],volatile float TempTable[],int index){
+void getTemp(OneWire ds,byte addr[],volatile float TempTable[],int index){
 
   byte data[12];
   ds.reset();
@@ -79,18 +79,18 @@ void getTemp(byte addr[],volatile float TempTable[],int index){
 }
 
 void updateTemp(volatile float wynikowa[]){
-  getTemp(TempG,wynikowa,0);
-  getTemp(TempD,wynikowa,1);
-  getTemp(TempCWU,wynikowa,2);
-  getTemp(TempSol,wynikowa,3);
+  getTemp(ds2,TempG,wynikowa,0);
+  getTemp(ds2,TempD,wynikowa,1);
+  getTemp(ds2,TempCWU,wynikowa,2);
+  getTemp(ds3,TempSol,wynikowa,3);
 }
 
 void LCDUpdate()
 {
   lcd.setCursor(0,0);lcd.print("TempG "); lcd.print(TempTable[0]); lcd.print(" "); lcd.print(relaySet[0]); lcd.print(" "); if (hour()<10) lcd.print("0"); lcd.print(hour());
   lcd.setCursor(0,1);lcd.print("TempD "); lcd.print(TempTable[1]); lcd.print(" "); lcd.print(relaySet[1]); lcd.print(" "); if (minute()<10) lcd.print("0"); lcd.print(minute());
-  lcd.setCursor(0,2);lcd.print("ZbCWU "); lcd.print(TempTable[2]); lcd.print(" "); lcd.print(relaySet[2]); lcd.print(" "); if (second()<10) lcd.print("0"); lcd.print(second());
-  lcd.setCursor(0,3);lcd.print("ZbSol "); lcd.print(TempTable[3]); lcd.print(" "); lcd.print(relaySet[3]); lcd.print("  "); lcd.print(weekday());
+  lcd.setCursor(-4,2);lcd.print("ZbCWU "); lcd.print(TempTable[2]); lcd.print(" "); lcd.print(relaySet[2]); lcd.print(" "); if (second()<10) lcd.print("0"); lcd.print(second());
+  lcd.setCursor(-4,3);lcd.print("ZbSol "); lcd.print(TempTable[3]); lcd.print(" "); lcd.print(relaySet[3]); lcd.print("  "); lcd.print(weekday());
 }
 
 void checkTemp( byte level, float temp) {
@@ -186,15 +186,15 @@ volatile int tcwu = 0;
 volatile int t2 = 0;
 
 ISR(TIMER1_COMPA_vect){
-  if (relayChan[3]==true && tcwu <= 225) tcwu++;  // Jeżeli mieszamy CWU, czekamy do końca
+  if (relayChan[3]==true && tcwu <= 30) tcwu++;  // Jeżeli mieszamy CWU, czekamy do końca
   else {                                          // Jeśli to koniec, to:
     if (relayChan[3]==true) {                     // Niestety trzeba upewnić się że mieszamy :(
-      if (TempTable[2]+5 <= TempTable[3]) {       // Jeżeli kończymy mieszać, sprawdzamy czy nie lepiej jest mieszać dalej
+      if (TempTable[2]+8 <= TempTable[3]) {       // Jeżeli kończymy mieszać, sprawdzamy czy nie lepiej jest mieszać dalej
         tcwu = 0;                                 // Widocznie warto mieszać dalej, mieszamy więc przez następne 15min
         return;                                   // Można też ustawić tcwu na więcej niż 0 i dodatkowo mieszać krócej :>
       } else {
         relayChan[3]=false;                       // Jeśli kończymy mieszać i nie warto dalej, wyłączamy przekaźnik
-        tcwu = 0;                                 // I zerujemy licznik, żeby potem mieszać 15min
+        tcwu = 0;                                 // I zerujemy licznik, żeby potem mieszać 1min
         return;
       }
     }
@@ -221,7 +221,8 @@ void setup(void)
   setSyncProvider(RTC.get);
   setRelay(); //zerowanie przekaźników po resecie.
   lcd.init();
-  lcd.clear();
+  lcd.backlight();
+//  lcd.clear();
   lcd.setCursor(5,0); lcd.print("Witaj!");
   delay(1000);
   LCDUpdate();
@@ -255,16 +256,20 @@ void loop(void)
 {
   wdt_reset();
   updateTemp(TempTable);
+  wdt_reset();
   LCDUpdate();
 
     // Ustawiamy grzanie na pietrze:
   if ( 1 < weekday() < 7){
-    if(grzanie_pietro[0][hour()][minute()/15]){ checkTemp(0,20);} else checkTemp(0,18);
+    if(grzanie_pietro[0][hour()][minute()/15]){ checkTemp(0,19);} else checkTemp(0,17);
   } else {
-    if(grzanie_pietro[1][hour()][minute()/15]){ checkTemp(0,20);} else checkTemp(0,18);
+    if(grzanie_pietro[1][hour()][minute()/15]){ checkTemp(0,19);} else checkTemp(0,17);
   }
     //Ustawiamy grzanie na parterze:
-  if(grzanie_parter[hour()][minute()/15]){ checkTemp(1,18);} else checkTemp(1,16);
+  if(grzanie_parter[hour()][minute()/15]){ checkTemp(1,17);} else checkTemp(1,15);
+  
+    //Ustawiamy mieszanie między zbiornikami CWU:
+  if(!relayChan[3] && (TempTable[2]+8 <= TempTable[3])) relayChan[3]=true;
     
   setRelay();
   delay(200);
