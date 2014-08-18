@@ -1,14 +1,13 @@
 #include <Wire.h>
 #include <OneWire.h>
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
 #include <Time.h>
 #include <DS1307RTC.h>
 #include <avr/wdt.h>
 #include "avr/pgmspace.h"
 
 //Definicje, definicje:
-LiquidCrystal lcd(4,5,6,7,8,9,10,11,12,13); // PINy wyświetlacza LCD...
-const int wiersze = 4, kolumny = 16; // I jego geometria
+LiquidCrystal_I2C lcd(0x27,16,4);
 
 //Tablice stanu przekaźników + dwie funkcje do zarządzania przekaźnikami + adres shielda:
 volatile bool relaySet[4]={true,true,true,true};
@@ -55,6 +54,7 @@ void setRelay(){
 
 //############## TEMPERATURA
 OneWire ds(2); // 1-Wire na pinie 2
+//OneWire ds(3); // Oddzielne 1-Wire na pinie 3
 
 byte TempG[8] = { 0x28, 0x38, 0xD0, 0x76, 0x04, 0x00, 0x00, 0x33 }; // Adres Sensora nr1
 byte TempD[8] = { 0x28, 0x5D, 0x15, 0xD8, 0x02, 0x00, 0x00, 0x86 }; // Adres Sensora nr2
@@ -220,7 +220,7 @@ void setup(void)
   wdt_reset();
   setSyncProvider(RTC.get);
   setRelay(); //zerowanie przekaźników po resecie.
-  lcd.begin(kolumny, wiersze); // teraz LCD
+  lcd.init();
   lcd.clear();
   lcd.setCursor(5,0); lcd.print("Witaj!");
   delay(1000);
