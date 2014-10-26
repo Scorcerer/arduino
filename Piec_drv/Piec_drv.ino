@@ -68,7 +68,7 @@ void getTemp(OneWire ds,byte addr[],volatile float TempTable[],int index){
   ds.reset();
   ds.select(addr);
   ds.write(0x44, 0);   // Wysłanie żądania odczytu temperatury
-  delay(100);          // Tutaj ustawiamy czas oczekiwania na odczyt temperatury
+  delay(150);          // Tutaj ustawiamy czas oczekiwania na odczyt temperatury
   ds.reset();
   ds.select(addr);    
   ds.write(0xBE);      // Odczyt temperatury
@@ -182,24 +182,33 @@ bool grzanie_parter[24][4]={
 };
 //############    TIMERY
 
-volatile int tcwu = 0;
+volatile int tcwu = 0;                // Miejsce na czas mieszania
+volatile int tsleep = 0;              // Miejsce na czas między-mieszaniami
 volatile int t2 = 0;
 
 ISR(TIMER1_COMPA_vect){
-  if (relayChan[3]==true && tcwu <= 30) tcwu++;  // Jeżeli mieszamy CWU, czekamy do końca
-  else {                                          // Jeśli to koniec, to:
-    if (relayChan[3]==true) {                     // Niestety trzeba upewnić się że mieszamy :(
-      if (TempTable[2]+8 <= TempTable[3]) {       // Jeżeli kończymy mieszać, sprawdzamy czy nie lepiej jest mieszać dalej
-        tcwu = 0;                                 // Widocznie warto mieszać dalej, mieszamy więc przez następne 15min
-        return;                                   // Można też ustawić tcwu na więcej niż 0 i dodatkowo mieszać krócej :>
-      } else {
-        relayChan[3]=false;                       // Jeśli kończymy mieszać i nie warto dalej, wyłączamy przekaźnik
-        tcwu = 0;                                 // I zerujemy licznik, żeby potem mieszać 1min
-        return;
-      }
+  if ( tsleep !=0 && tsleep < 450 )         // Jeśli uruchomił się timer między-mieszaniowy, musimy go przeczekać
+  {
+    tsleep++;                               // więc dodajemy czekanie
+    tcwu = 0;                               // i usuwamy ew. zapędy do mieszania
+  }
+  else {
+    tsleep = 0;                            // Wygląda na to że zakończyliśmy oczekiwanie, więc zerujemy jego timer.
+    if ( tcwu !=0 && tcwu <= 215) tcwu++;  // Jeżeli mieszamy CWU, czekamy do końca
+    else {                                          // Jeśli to koniec, to:
+      if (relayChan[3]==true) {                     // Niestety trzeba upewnić się że mieszamy :(
+        if (TempTable[2]+8 <= TempTable[3]) {       // Jeżeli kończymy mieszać, sprawdzamy czy nie lepiej jest mieszać dalej
+          tcwu = 110;                               // Widocznie warto mieszać dalej, mieszamy więc przez następne ~7min
+          return;                                   // Można też ustawić tcwu na więcej niż 0 i dodatkowo mieszać krócej :>
+        } else {
+          relayChan[3]=false;                       // Jeśli kończymy mieszać i nie warto dalej, wyłączamy przekaźnik
+          tcwu = 0;                                 // I zerujemy licznik, żeby potem mieszać 1min
+          tsleep = 1;
+          return;
+        }
+      } else relayChan[3]=true;
     }
   }
-  
 }
 
 
@@ -269,7 +278,11 @@ void loop(void)
   if(grzanie_parter[hour()][minute()/15]){ checkTemp(1,17);} else checkTemp(1,15);
   
     //Ustawiamy mieszanie między zbiornikami CWU:
-  if(!relayChan[3] && (TempTable[2]+8 <= TempTable[3])) relayChan[3]=true;
+  if( 7 < hour() < 18 )
+  {
+    if(!relayChan[3] && (TempTable[2]+8 <= TempTable[3])) tcwu = 1;
+  }
+  
     
   setRelay();
   delay(200);
