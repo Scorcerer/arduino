@@ -3,10 +3,12 @@
 #include <Time.h>
 #include <Wire.h>
 #include <DS1307RTC.h>
+#include <SoftwareSerial.h>
 #include <IRremote.h>
 
 // Матрица
 MaTrix mymatrix;
+SoftwareSerial xBee(17, 16);
 
 extern unsigned char font5x8[];
 extern unsigned char font6x8[];
@@ -50,12 +52,18 @@ byte color=GREEN;
 byte count=0;
 byte effect=3;
 unsigned int pause;
+time_t t;
 
 void setup(){
-  Serial.begin(115200);
+  Serial.begin(38400);
+  xBee.begin(38400);
+  Serial.println("Hello, world!");
+  xBee.println("Hello, world!");
+  delay(500);
   
   // RTC
   setSyncProvider(RTC.get);
+  Serial.println("Waiting for sync message");
   
   // Матрица
   // инициализация 
@@ -72,51 +80,71 @@ void setup(){
 }
 
 void loop(){
- if (millis()>ready) {
-   String wD;
-   char buff[60];
-   char tbuf[6];
-   char pbuf[6];
-     switch(count) {
-         case 0:
-           if((year()!=2000) || (year()!=2165)) {
-             sprintf(buff, "%02d%s%02d", hour(),(second()%2)?":":":",minute());
-             mymatrix.printString(buff, 4, RED, digit6x8future, int(random(0,5)), VFAST);
-           }
-           ready=millis()+15000;
-           while(millis()<ready){
-             if((year()!=2000) || (year()!=2165)) sprintf(buff, "%02d%s%02d", hour(),(second()%2)?":":" ",minute());
-             mymatrix.printString(buff, 4, RED, digit6x8future);
-             delay(10);
-           }
-           pause=0;   
-           break;
-           
-           case 1:
+  xBee.println("Waiting for sync message");
+  if (millis()>ready) {
+    String wD;
+    char buff[60];
+    char tbuf[6];
+    char pbuf[6];
+      switch(count) {
+        case 0:
+          if((year()!=2000) || (year()!=2165)) {
+            sprintf(buff, "%02d%s%02d", hour(),(second()%2)?":":":",minute());
+            mymatrix.printString(buff, 4, RED, digit6x8future, int(random(0,5)), VFAST);
+          }
+          ready=millis()+50000;
+          while(millis()<ready){
+            if((year()!=2000) || (year()!=2165)) sprintf(buff, "%02d%s%02d", hour(),(second()%2)?":":" ",minute());
+            mymatrix.printString(buff, 4, RED, digit6x8future);
+            if (Serial.available()) {
+              time_t t = processSyncMessage();
+                if (t != 0) {
+                  RTC.set(t);   // set the RTC and the system time to the received value
+                  setTime(t);          
+                }
+            }
+            delay(10);
+         }
+         pause=0;   
+         break;
+            
+         case 1:
            sprintf(buff, "%s", wDay[weekday()-1]);
            wD = "  "+String(buff);
            mymatrix.printRunningString(wD, GREEN, font6x8, FAST);
            pause=0;
            break;
-           
+
          case 2:
            sprintf(buff, "%2d %s %4d", day(), wMonth[month()-1], year());
            wD = String(buff);
            mymatrix.printRunningString(wD, YELLOW, font6x8, FAST);
            pause=0;
            break;
-           
+            
          default:
            break;
-     }
-     
-     if(count>=2) count = 0; else count++;
-   
-   ready = millis()+pause;
-   }
-
+      }
+      
+    if(count>=2) count = 0; else count++;
+    ready = millis()+pause;
+  }
   code();
+}
 
+#define TIME_HEADER  "T"
+unsigned long processSyncMessage() {
+  unsigned long pctime = 0L;
+  const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013 
+
+  if(Serial.find(TIME_HEADER)) {
+    pctime = Serial.parseInt();
+    return pctime;
+    if( pctime < DEFAULT_TIME) { // check the value is a valid time (greater than Jan 1 2013)
+      pctime = 0L; // return 0 to indicate that the time is not valid
+    }
+  }
+  return pctime;
 }
 
 void code(){
