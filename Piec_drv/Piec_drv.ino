@@ -298,16 +298,16 @@ void loop(void)
   LCDUpdate();
 
     // Ustawiamy grzanie na pietrze:
-  if ( 1 < weekday() < 7){
+  if ( 1 < weekday() && weekday() < 7){
     if(grzanie_pietro[0][hour()][minute()/15]){ checkTemp(0,18);} else checkTemp(0,16.5);
   } else {
     if(grzanie_pietro[1][hour()][minute()/15]){ checkTemp(0,18);} else checkTemp(0,16.5);
   }
     //Ustawiamy grzanie na parterze:
-  if ( 1 < weekday() < 7){
-    if(grzanie_parter[0][hour()][minute()/15]){ checkTemp(1,18);} else checkTemp(1,16.5);
+  if ( 1 < weekday() && weekday() < 7){
+    if(grzanie_parter[0][hour()][minute()/15]){ checkTemp(1,19);} else checkTemp(1,18);
   } else {
-    if(grzanie_parter[1][hour()][minute()/15]){ checkTemp(1,18);} else checkTemp(1,16.5);
+    if(grzanie_parter[1][hour()][minute()/15]){ checkTemp(1,19);} else checkTemp(1,18);
   }
   
     //Ustawiamy mieszanie między zbiornikami CWU:
