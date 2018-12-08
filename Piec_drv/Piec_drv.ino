@@ -8,11 +8,14 @@
 #include <EEPROM.h>
 #include <TimeLib.h>
 /* Sending time syntax:
+ * To add Timezone: echo $(date +%s)+3600 | bc
  * Use "date +T%s\n > /dev/ttyACM0" (UTC time zone)
 */
 
 // Definicje, definicje:
 #define TIME_HEADER  "T"   // Header tag for serial time sync message
+#define READ_HEADER  "R"   // Header tag for reading tables
+#define WRITE_HEADER  "W"   // Header tag for writing tables
 LiquidCrystal_I2C lcd(0x27,16,4);
 
 // Zmienne dla temperatur - zeby nie szukac tego w kodzie
@@ -125,14 +128,24 @@ void checkTemp( byte level, float temp) {
 }
 
 void processMessage() {
-  unsigned long pctime;
-  const unsigned long DEFAULT_TIME = 1543622400; // Dec 1 2018
-
-  if(Serial.find(TIME_HEADER)) {
+/*  if(Serial.find(TIME_HEADER)) {
+     unsigned long pctime;
+     const unsigned long DEFAULT_TIME = 1543622400; // Dec 1 2018
      pctime = Serial.parseInt();
-     if( pctime >= DEFAULT_TIME) { // check the integer is a valid time (greater than Jan 1 2013)
+     if( pctime >= DEFAULT_TIME) { // check the integer is a valid time
        setTime(pctime); // Sync Arduino clock to the time received on the serial port
+       Serial.println(RTC.set(now()));
      }
+  }
+*/  if(Serial.find(READ_HEADER)) {
+    int tbl = Serial.parseInt();
+    if( tbl%100 == 0) {
+      for (int hr=0 ; hr < 24 ; hr++) {
+        Serial.print(hr);Serial.print(":");
+        Serial.print(EEPROM.read(tbl+(hr*4)));Serial.print(",");Serial.print(EEPROM.read(tbl+(hr*4)+1));Serial.print(",");
+        Serial.print(EEPROM.read(tbl+(hr*4)+2));Serial.print(",");Serial.print(EEPROM.read(tbl+(hr*4)+3));Serial.println();
+      }
+    } else Serial.println("ERROR in parse number");
   }
 }
 
