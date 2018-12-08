@@ -6,8 +6,13 @@
 #include <avr/wdt.h>
 #include "avr/pgmspace.h"
 #include <EEPROM.h>
+#include <TimeLib.h>
+/* Sending time syntax:
+ * Use "date +T%s\n > /dev/ttyACM0" (UTC time zone)
+*/
 
-//Definicje, definicje:
+// Definicje, definicje:
+#define TIME_HEADER  "T"   // Header tag for serial time sync message
 LiquidCrystal_I2C lcd(0x27,16,4);
 
 // Zmienne dla temperatur - zeby nie szukac tego w kodzie
@@ -119,6 +124,18 @@ void checkTemp( byte level, float temp) {
   else { if (TempTable[level] >= temp+0.2) relayChan[level]=false;}
 }
 
+void processMessage() {
+  unsigned long pctime;
+  const unsigned long DEFAULT_TIME = 1543622400; // Dec 1 2018
+
+  if(Serial.find(TIME_HEADER)) {
+     pctime = Serial.parseInt();
+     if( pctime >= DEFAULT_TIME) { // check the integer is a valid time (greater than Jan 1 2013)
+       setTime(pctime); // Sync Arduino clock to the time received on the serial port
+     }
+  }
+}
+
 //############    TIMERY
 
 volatile int tcwu = 0;                // Miejsce na czas mieszania
@@ -166,6 +183,8 @@ void setup(void)
 {
   wdt_enable(WDTO_8S);
   wdt_reset();
+  Serial.begin(9600);
+  while (!Serial) ; // Needed for Leonardo only
   setSyncProvider(RTC.get);
   setRelay(); //zerowanie przekaźników po resecie.
   lcd.init();
@@ -206,6 +225,9 @@ void loop(void)
   updateTemp(TempTable);
   wdt_reset();
   LCDUpdate();
+  if (Serial.available()) {
+    processMessage();
+  }
 
     // Ustawiamy grzanie na pietrze:
   if ( 1 < weekday() && weekday() < 7){
