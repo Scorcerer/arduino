@@ -119,117 +119,6 @@ void checkTemp( byte level, float temp) {
   else { if (TempTable[level] >= temp+0.2) relayChan[level]=false;}
 }
 
-//############    TABLICE CZASU
-//prog_uchar grzanie_pietro[2][24][4]={
-const bool grzanie_pietro[2][24][4]={
-  { // workdays
-    {1,1,1,1}, // 00
-    {0,0,0,0}, // 01
-    {0,0,0,0}, // 02
-    {0,0,0,0}, // 03
-    {0,0,0,0}, // 04
-    {0,0,0,0}, // 05
-    {0,0,0,0}, // 06
-    {1,1,1,1}, // 07
-    {1,1,0,0}, // 08
-    {0,0,0,0}, // 09
-    {0,0,0,0}, // 10
-    {0,0,0,0}, // 11
-    {0,0,0,0}, // 12
-    {0,0,0,0}, // 13
-    {0,0,0,0}, // 14
-    {0,0,0,0}, // 15
-    {0,0,0,0}, // 16
-    {0,0,0,0}, // 17
-    {0,0,0,0}, // 18
-    {0,0,0,0}, // 19
-    {0,0,0,0}, // 20
-    {0,0,0,0}, // 21
-    {0,0,1,1}, // 22
-    {1,1,1,1}  // 23
-  },
-  { // weekend
-    {0,0,0,0}, // 00
-    {0,0,0,0}, // 01
-    {0,0,0,0}, // 02
-    {0,0,0,0}, // 03
-    {0,0,0,0}, // 04
-    {0,0,0,0}, // 05
-    {0,0,0,0}, // 06
-    {1,1,1,1}, // 07
-    {1,1,0,0}, // 08
-    {0,0,0,0}, // 09
-    {0,0,0,0}, // 10
-    {0,0,0,0}, // 11
-    {0,0,0,0}, // 12
-    {0,0,0,0}, // 13
-    {0,0,0,0}, // 14
-    {0,0,0,0}, // 15
-    {0,0,0,0}, // 16
-    {0,0,0,0}, // 17
-    {0,0,0,0}, // 18
-    {0,0,0,0}, // 19
-    {0,0,0,0}, // 20
-    {1,1,1,1}, // 21
-    {1,1,1,1}, // 22
-    {0,0,0,0}  // 23
-  },
-};
-bool grzanie_parter[2][24][4]={
-  {//workdays
-    {0,0,0,0}, // 00
-    {0,0,0,0}, // 01
-    {0,0,0,0}, // 02
-    {0,0,0,0}, // 03
-    {0,0,0,0}, // 04
-    {0,0,0,0}, // 05
-    {0,0,0,0}, // 06
-    {0,0,1,1}, // 07
-    {1,1,1,1}, // 08
-    {1,1,1,1}, // 09
-    {0,0,0,0}, // 10
-    {0,0,0,0}, // 11
-    {0,0,0,0}, // 12
-    {0,0,0,0}, // 13
-    {1,1,1,1}, // 14
-    {1,1,1,1}, // 15
-    {0,0,0,0}, // 16
-    {0,0,0,0}, // 17
-    {0,0,0,0}, // 18
-    {0,0,0,0}, // 19
-    {1,1,1,1}, // 20
-    {1,1,1,1}, // 21
-    {1,1,1,1}, // 22
-    {1,1,1,1}  // 23
-  },
-  {//weekend
-    {0,0,0,0}, // 00
-    {0,0,0,0}, // 01
-    {0,0,0,0}, // 02
-    {0,0,0,0}, // 03
-    {0,0,0,0}, // 04
-    {0,0,0,0}, // 05
-    {0,0,0,0}, // 06
-    {1,1,1,1}, // 07
-    {1,1,1,1}, // 08
-    {1,1,0,0}, // 09
-    {0,0,0,0}, // 10
-    {0,0,0,0}, // 11
-    {0,0,0,0}, // 12
-    {0,0,0,0}, // 13
-    {0,0,0,0}, // 14
-    {0,0,0,0}, // 15
-    {0,0,0,0}, // 16
-    {0,0,0,0}, // 17
-    {0,0,0,0}, // 18
-    {0,0,1,1}, // 19
-    {1,1,1,1}, // 20
-    {1,1,1,1}, // 21
-    {1,1,1,1}, // 22
-    {0,0,0,0}  // 23
-
-  },
-};
 //############    TIMERY
 
 volatile int tcwu = 0;                // Miejsce na czas mieszania
@@ -275,17 +164,6 @@ ISR(TIMER2_COMPA_vect){
 
 void setup(void)
 {
-/*    lcd.setCursor(5,0); lcd.print("laduje");
-  lcd.setCursor(2,0); lcd.print("Loading...");
-  for (int hour=0 ; hour<24 ; hour++) {
-    for (int quarter=0 ; quarter < 4 ; quarter++) {
-      EEPROM.update(pietro_work+(hour*4)+quarter,grzanie_pietro[0][hour][quarter]);
-      EEPROM.update(pietro_week+(hour*4)+quarter,grzanie_pietro[1][hour][quarter]);
-      EEPROM.update(parter_work+(hour*4)+quarter,grzanie_parter[0][hour][quarter]);
-      EEPROM.update(parter_week+(hour*4)+quarter,grzanie_parter[1][hour][quarter]);
-    }
-  }
-*/
   wdt_enable(WDTO_8S);
   wdt_reset();
   setSyncProvider(RTC.get);
@@ -341,20 +219,6 @@ void loop(void)
   } else {
     if(EEPROM.read(parter_week+(hour()*4)+(minute()/15))){ checkTemp(1,parter_weekend_high);} else checkTemp(1,parter_weekend_low);
   }
-/*
-  // Ustawiamy grzanie na pietrze:
-  if ( 1 < weekday() && weekday() < 7){
-    if(grzanie_pietro[0][hour()][minute()/15]){ checkTemp(0,pietro_work_high);} else checkTemp(0,pietro_work_low);
-  } else {
-    if(grzanie_pietro[1][hour()][minute()/15]){ checkTemp(0,pietro_weekend_high);} else checkTemp(0,pietro_weekend_low);
-  }
-    //Ustawiamy grzanie na parterze:
-  if ( 1 < weekday() && weekday() < 7){
-    if(grzanie_parter[0][hour()][minute()/15]){ checkTemp(1,parter_work_high);} else checkTemp(1,parter_work_low);
-  } else {
-    if(grzanie_parter[1][hour()][minute()/15]){ checkTemp(1,parter_weekend_high);} else checkTemp(1,parter_weekend_low);
-  }
- */
   
     //Ustawiamy mieszanie między zbiornikami CWU:
   if( 7 < hour() < 18 )
