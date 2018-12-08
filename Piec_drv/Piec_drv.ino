@@ -5,9 +5,30 @@
 #include <DS1307RTC.h>
 #include <avr/wdt.h>
 #include "avr/pgmspace.h"
+#include <EEPROM.h>
 
 //Definicje, definicje:
 LiquidCrystal_I2C lcd(0x27,16,4);
+
+// Zmienne dla temperatur - zeby nie szukac tego w kodzie
+double pietro_work_high   = 18 ;
+double pietro_work_low    = 17 ;
+double pietro_weekend_high= 18 ;
+double pietro_weekend_low = 17 ;
+
+double parter_work_high   = 19   ;
+double parter_work_low    = 17.5 ;
+double parter_weekend_high= 19   ;
+double parter_weekend_low = 17.5 ;
+
+//Inicjalizacja wskaznika EEPROM
+int eeprom_addr = 0;
+
+//Definicja startowych adresow dla tabel w EEPROM
+int pietro_work = 0;
+int pietro_week = 100;
+int parter_work = 200;
+int parter_week = 300;
 
 //Tablice stanu przekaźników + dwie funkcje do zarządzania przekaźnikami + adres shielda:
 volatile bool relaySet[4]={true,true,true,true};
@@ -44,7 +65,7 @@ void Relay_off(byte _data ) {
 
 // Funkcja do ustawiania przekaźników jak należy:
 void setRelay(){
-    for (byte i=0;i<=4;i++) {
+    for (byte i=0;i<4;i++) {
       if(relaySet[i]!=relayChan[i]){
         if(relayChan[i]) Relay_on(i); else Relay_off(i);
       };
@@ -102,7 +123,7 @@ void checkTemp( byte level, float temp) {
 //prog_uchar grzanie_pietro[2][24][4]={
 const bool grzanie_pietro[2][24][4]={
   { // workdays
-    {0,0,0,0}, // 00
+    {1,1,1,1}, // 00
     {0,0,0,0}, // 01
     {0,0,0,0}, // 02
     {0,0,0,0}, // 03
@@ -123,8 +144,8 @@ const bool grzanie_pietro[2][24][4]={
     {0,0,0,0}, // 18
     {0,0,0,0}, // 19
     {0,0,0,0}, // 20
-    {1,1,1,1}, // 21
-    {1,1,1,1}, // 22
+    {0,0,0,0}, // 21
+    {0,0,1,1}, // 22
     {1,1,1,1}  // 23
   },
   { // weekend
@@ -163,23 +184,23 @@ bool grzanie_parter[2][24][4]={
     {0,0,0,0}, // 04
     {0,0,0,0}, // 05
     {0,0,0,0}, // 06
-    {1,1,1,1}, // 07
+    {0,0,1,1}, // 07
     {1,1,1,1}, // 08
-    {1,1,0,0}, // 09
+    {1,1,1,1}, // 09
     {0,0,0,0}, // 10
     {0,0,0,0}, // 11
     {0,0,0,0}, // 12
     {0,0,0,0}, // 13
-    {0,0,0,0}, // 14
-    {0,0,0,0}, // 15
+    {1,1,1,1}, // 14
+    {1,1,1,1}, // 15
     {0,0,0,0}, // 16
     {0,0,0,0}, // 17
     {0,0,0,0}, // 18
-    {0,0,1,1}, // 19
+    {0,0,0,0}, // 19
     {1,1,1,1}, // 20
     {1,1,1,1}, // 21
     {1,1,1,1}, // 22
-    {0,0,0,0}  // 23
+    {1,1,1,1}  // 23
   },
   {//weekend
     {0,0,0,0}, // 00
@@ -254,6 +275,17 @@ ISR(TIMER2_COMPA_vect){
 
 void setup(void)
 {
+/*    lcd.setCursor(5,0); lcd.print("laduje");
+  lcd.setCursor(2,0); lcd.print("Loading...");
+  for (int hour=0 ; hour<24 ; hour++) {
+    for (int quarter=0 ; quarter < 4 ; quarter++) {
+      EEPROM.update(pietro_work+(hour*4)+quarter,grzanie_pietro[0][hour][quarter]);
+      EEPROM.update(pietro_week+(hour*4)+quarter,grzanie_pietro[1][hour][quarter]);
+      EEPROM.update(parter_work+(hour*4)+quarter,grzanie_parter[0][hour][quarter]);
+      EEPROM.update(parter_week+(hour*4)+quarter,grzanie_parter[1][hour][quarter]);
+    }
+  }
+*/
   wdt_enable(WDTO_8S);
   wdt_reset();
   setSyncProvider(RTC.get);
@@ -299,16 +331,30 @@ void loop(void)
 
     // Ustawiamy grzanie na pietrze:
   if ( 1 < weekday() && weekday() < 7){
-    if(grzanie_pietro[0][hour()][minute()/15]){ checkTemp(0,18);} else checkTemp(0,16.5);
+    if(EEPROM.read(pietro_work+(hour()*4)+(minute()/15))){ checkTemp(0,pietro_work_high);} else checkTemp(0,pietro_work_low);
   } else {
-    if(grzanie_pietro[1][hour()][minute()/15]){ checkTemp(0,18);} else checkTemp(0,16.5);
+    if(EEPROM.read(pietro_week+(hour()*4)+(minute()/15))){ checkTemp(0,pietro_weekend_high);} else checkTemp(0,pietro_weekend_low);
   }
     //Ustawiamy grzanie na parterze:
   if ( 1 < weekday() && weekday() < 7){
-    if(grzanie_parter[0][hour()][minute()/15]){ checkTemp(1,19);} else checkTemp(1,18);
+    if(EEPROM.read(parter_work+(hour()*4)+(minute()/15))){ checkTemp(1,parter_work_high);} else checkTemp(1,parter_work_low);
   } else {
-    if(grzanie_parter[1][hour()][minute()/15]){ checkTemp(1,19);} else checkTemp(1,18);
+    if(EEPROM.read(parter_week+(hour()*4)+(minute()/15))){ checkTemp(1,parter_weekend_high);} else checkTemp(1,parter_weekend_low);
   }
+/*
+  // Ustawiamy grzanie na pietrze:
+  if ( 1 < weekday() && weekday() < 7){
+    if(grzanie_pietro[0][hour()][minute()/15]){ checkTemp(0,pietro_work_high);} else checkTemp(0,pietro_work_low);
+  } else {
+    if(grzanie_pietro[1][hour()][minute()/15]){ checkTemp(0,pietro_weekend_high);} else checkTemp(0,pietro_weekend_low);
+  }
+    //Ustawiamy grzanie na parterze:
+  if ( 1 < weekday() && weekday() < 7){
+    if(grzanie_parter[0][hour()][minute()/15]){ checkTemp(1,parter_work_high);} else checkTemp(1,parter_work_low);
+  } else {
+    if(grzanie_parter[1][hour()][minute()/15]){ checkTemp(1,parter_weekend_high);} else checkTemp(1,parter_weekend_low);
+  }
+ */
   
     //Ustawiamy mieszanie między zbiornikami CWU:
   if( 7 < hour() < 18 )
