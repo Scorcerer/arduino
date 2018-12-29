@@ -7,15 +7,19 @@
 #include "avr/pgmspace.h"
 #include <EEPROM.h>
 #include <TimeLib.h>
+#include <StringSplitter.h>
 /* Sending time syntax:
  * To add Timezone: echo $(date +%s)+3600 | bc
  * Use "date +T%s\n > /dev/ttyACM0" (UTC time zone)
 */
 
-// Definicje, definicje:
+// Definitions, definitions:
 #define TIME_HEADER  "T"   // Header tag for serial time sync message
 #define READ_HEADER  "R"   // Header tag for reading tables
 #define WRITE_HEADER  "W"   // Header tag for writing tables
+// Calculate based on max input size expected for one command
+#define INPUT_SIZE 30
+
 LiquidCrystal_I2C lcd(0x27,16,4);
 
 // Zmienne dla temperatur - zeby nie szukac tego w kodzie
@@ -43,42 +47,24 @@ volatile bool relaySet[4]={true,true,true,true};
 volatile bool relayChan[4]={false,false,false,false};
 #define relay B0100000
 
-void Relay_on(byte _data ) {
-
+void Relay_set(byte _data,bool status) {
   byte _data2;
   Wire.requestFrom(relay, 1);
   if(Wire.available()) {
     _data2 = Wire.read();
-//  }
-  Wire.beginTransmission(relay);
-  Wire.write(_data2 | 1<<_data);
-  Wire.endTransmission();
-  relaySet[_data]=true;
+    Wire.beginTransmission(relay);
+    if(status) Wire.write(_data2 | 1<<_data); else Wire.write(_data2 & ~(1<<_data));
+    Wire.endTransmission();
+    relaySet[_data]=status;
   }
 }
-
-void Relay_off(byte _data ) {
-
-  byte _data2;
-  Wire.requestFrom(relay, 1);
-  if(Wire.available()) {
-    _data2 = Wire.read();
-//  }
-  Wire.beginTransmission(relay);
-  Wire.write(_data2 & ~(1<<_data));
-  Wire.endTransmission();
-  relaySet[_data]=false;
-  }
-}
-
 // Funkcja do ustawiania przekaźników jak należy:
 void setRelay(){
     for (byte i=0;i<4;i++) {
       if(relaySet[i]!=relayChan[i]){
-        if(relayChan[i]) Relay_on(i); else Relay_off(i);
+        Relay_set(i,relayChan[i]);
       };
     };
-//    for(byte i=0; i<4 ; i++) {lcd.setCursor(12,i);lcd.print(int(relaySet[i]));}
 }
 
 //############## TEMPERATURA
@@ -103,7 +89,6 @@ void getTemp(OneWire ds,byte addr[],volatile float TempTable[],int index){
   ds.write(0xBE);      // Odczyt temperatury
   for (byte i = 0; i < 9; i++) data[i] = ds.read();
   int16_t raw = (data[1] << 8) | data[0];
-
   TempTable[index] = (float)raw / 16.0;
 }
 
@@ -128,25 +113,27 @@ void checkTemp( byte level, float temp) {
 }
 
 void processMessage() {
-/*  if(Serial.find(TIME_HEADER)) {
+  String message = Serial.readString();
+  if(message.charAt(0)==TIME_HEADER) {
      unsigned long pctime;
      const unsigned long DEFAULT_TIME = 1543622400; // Dec 1 2018
-     pctime = Serial.parseInt();
+     message.remove(0,0);
+     pctime = message.toInt();
      if( pctime >= DEFAULT_TIME) { // check the integer is a valid time
        setTime(pctime); // Sync Arduino clock to the time received on the serial port
        Serial.println(RTC.set(now()));
      }
-  }
-*/  if(Serial.find(READ_HEADER)) {
-    int tbl = Serial.parseInt();
+  } else if(message.charAt(0)==READ_HEADER) {
+    message.remove(0,0);
+    int tbl = message.toInt();
     if( tbl%100 == 0) {
       for (int hr=0 ; hr < 24 ; hr++) {
         Serial.print(hr);Serial.print(":");
         Serial.print(EEPROM.read(tbl+(hr*4)));Serial.print(",");Serial.print(EEPROM.read(tbl+(hr*4)+1));Serial.print(",");
         Serial.print(EEPROM.read(tbl+(hr*4)+2));Serial.print(",");Serial.print(EEPROM.read(tbl+(hr*4)+3));Serial.println();
       }
-    } else Serial.println("ERROR in parse number");
-  }
+    } else Serial.println("ERROR in parse command");
+  } else Serial.println("ERROR command not found");
 }
 
 //############    TIMERY
@@ -261,7 +248,6 @@ void loop(void)
     if(!relayChan[3] && (TempTable[2]+8 <= TempTable[3])) tcwu = 1;
   }
   
-    
   setRelay();
   delay(200);
 
